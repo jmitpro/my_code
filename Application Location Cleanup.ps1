@@ -1,4 +1,4 @@
-$app = " bba1z - hkhkhhkjh.v2.4.56"
+$app = "bba1z - hkhkhhkjh.v2.4.56"
 
 
 #[regex]$regex = '(^[a-zA-Z0-9]*$)'
