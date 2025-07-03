@@ -10,7 +10,7 @@
 #==============================================================================================================================================================================
 #declare variables
 $ComponentName = 'RBC Application Location Cleanup' #used in the cmtrace formatted log file
-$logpath = "$env:PUBLIC\Desktop"
+$logpath = [Environment]::GetFolderPath("Desktop")
 $MessageBoxTitle = "RBC Application Cleanup"
 $AppListFile = 'Application_List.txt'
 $i = 0 #counter for the progress bar steps
