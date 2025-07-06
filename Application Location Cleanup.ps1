@@ -1,11 +1,15 @@
 # Written by: John Muhar for RBC- john.muhar@rbc.com
-# Script Purpose: This script will ingest a text file containing the names of all the applications located in the root of Applications in MECM.
+# Script Purpose: v1.0 - This script will ingest a text file containing the names of all the applications located in the root of Applications in MECM.
                 # Based on the naming convention (RBC Dist code at the beginning of the application name as well as application version), a folder structure will be created as the destination
                 # for the application move. The applications will then be moved to their appropriate folder.
 #
 # Original Construction Date: v1.0 - 06-30-2025
 # Modified by: John Muhar for RBC- john.muhar@rbc.com
-# Revision Date: vX.X - MM-DD-YYYY - Modifications -
+# Revision Date: v1.1 - 07-07-2025 - Modifications - Added the ability to query WMI on the primary site to obtain list of applications in the root node Applications in MECM
+                                    #Disabled all code needed to load and read a text file for the application list.
+#Script Purpose: v1.1 -This script will connect to the MECM Primary site and query WMI for the names of all the applications located in the root of Applications in MECM.
+                # Based on the naming convention (RBC Dist code at the beginning of the application name as well as application version), a folder structure will be created as the destination
+                # for the application move. The applications will then be moved to their appropriate folder.
 
 #==============================================================================================================================================================================
 #declare variables
@@ -39,9 +43,9 @@ $logfile = $MyInvocation.MyCommand
 $logfileNoExt = [io.path]::GetFileNameWithoutExtension($logfile)
 $logFile = "$logPath\$logfileNoExt.log"
 #=======================================================================================================================================================================================================
-
 #Start script
 #==========================================================================================================================================================================================================
+
 #Functions
 #==============================================================================================================================================================================
 #==============================================================================================================================================================================
@@ -52,14 +56,12 @@ Function Update-RunningGUI {
     $form1.Refresh()
     start-sleep -Seconds 2
 }
-
 Function Update-ProgressBar {
     [int]$pct = ($i/$numapps) * 100
     #update the progress bar
     $progressbar1.Value = $pct
     start-sleep -Seconds 2
 }
-
 Function Display-Message{
     Param (
           #Display Message
@@ -78,7 +80,6 @@ Function Display-Message{
 	    $MessageIcon = [System.Windows.MessageBoxImage]::$MessageIconType #Error, Question, Warning, Information 
 	    [System.Windows.MessageBox]::Show($Message, $BoxTitle, $ButtonType, $messageicon)
 }
-
 Function Open-LogFile {
     Try {
         $reglocation = "HKLM:\SOFTWARE\Microsoft\SMS\Client\Configuration\Client Properties"
@@ -94,7 +95,6 @@ Function Open-LogFile {
 }
 #==============================================================================================================================================================================
 #==============================================================================================================================================================================
-
 #draw the form
 Add-Type -assembly System.Windows.Forms
 
@@ -151,7 +151,6 @@ $form1.Show() | out-null
 
 #give the form focus
 $form1.Focus() | out-null
-
 #==============================================================================================================================================================================
 #==============================================================================================================================================================================
 $Message = "Starting Application Cleanup..."
@@ -232,25 +231,46 @@ else {
 #Set the current location to be the site code.
 Set-Location "$($SiteCode):\" @initParams
 
-#check for existence of application list file
-If ((Test-Path "$PSScriptRoot\$AppListFile")) {
-    $Message = "File $PSScriptRoot\$AppListFile found. Continuing... "
+#Connect to WMI on the MECM Primary site and query for applications in the roo node
+Try {
+    $Message = "Connecting to the MECM Primary Site $ProviderMachineName WMI instance..."
     Write-Log $logFile $Message $ComponentName 1
     Update-RunningGUI
+    $applist = (Get-WmiObject -Computername $ProviderMachineName -Namespace "ROOT\SMS\Site_$SiteCode" -Query "select * from SMS_ApplicationLatest where ObjectPath = '/'").LocalizedDisplayName
+    $Message = "Successfully connected to the MECM Primary Site $ProviderMachineName WMI instance. Getting list of applications in root node."
+    Write-Log $logFile $Message $ComponentName 1
+    Update-RunningGUI
+
 }
-else {
-    $Message = "File $PSScriptRoot\$AppListFile NOT found. This utility is aborting."
+Catch [System.Exception] {
+    $Message = "Failed to connect to the MECM Primary Site $ProviderMachineName WMI instance. This utility is aborting. Error: $($_.Exception.Message)"
     Write-Log $logFile $Message $ComponentName 3
     Display-Message $Message "Error"
     $form1.Close()
     Open-LogFile
     Exit 1
+
 }
+#this section is no longer needed
+#check for existence of application list file
+#If ((Test-Path "$PSScriptRoot\$AppListFile")) {
+#    $Message = "File $PSScriptRoot\$AppListFile found. Continuing... "
+#    Write-Log $logFile $Message $ComponentName 1
+#    Update-RunningGUI
+#}
+#else {
+#    $Message = "File $PSScriptRoot\$AppListFile NOT found. This utility is aborting."
+#    Write-Log $logFile $Message $ComponentName 3
+#    Display-Message $Message "Error"
+#    $form1.Close()
+#    Open-LogFile
+#    Exit 1
+#}
 #load application list file
 $Message = "Loading application list to process..."
 Write-Log $logFile $Message $ComponentName 1
 Update-RunningGUI
-$applist = Get-Content -Path $PSScriptRoot\$AppListFile
+#$applist = Get-Content -Path $PSScriptRoot\$AppListFile
 $Message = "Successfully loaded application list."
 Write-Log $logFile $Message $ComponentName 1
 Update-RunningGUI
@@ -261,6 +281,14 @@ $Message = "Found $numapps applications(s) to process."
 Write-Log $logFile $Message $ComponentName 1
 Update-RunningGUI
 
+If ($numapps -eq 0) {#no applications in root found
+    $Message = "Found no applications in the root node. This utility is aborting."
+    Write-Log $logFile $Message $ComponentName 2
+    Display-Message $Message "Warning"
+    $form1.Close()
+    Open-LogFile
+    Exit 1
+}
 
 Foreach ($app in $applist){
     Write-Log $logFile '*****************************************************************************************************************************' $ComponentName 1
@@ -368,7 +396,7 @@ Update-RunningGUI
 If ($numerror -eq 0) { #no errors found
     $Message = "All applications were successfully moved with no errors."
     $form1.Close()
-    Write-Log $logFile $Message $ComponentName 1    
+    Write-Log $logFile $Message $ComponentName 1
     Update-RunningGUI
     $form1.Close()
     Display-Message $Message "Information"
