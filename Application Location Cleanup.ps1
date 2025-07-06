@@ -231,7 +231,7 @@ else {
 #Set the current location to be the site code.
 Set-Location "$($SiteCode):\" @initParams
 
-#Connect to WMI on the MECM Primary site and query for applications in the roo node
+#Connect to WMI on the MECM Primary site and query for applications in the root node
 Try {
     $Message = "Connecting to the MECM Primary Site $ProviderMachineName WMI instance..."
     Write-Log $logFile $Message $ComponentName 1
