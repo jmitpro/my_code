@@ -3,7 +3,7 @@
                 # Based on the naming convention (RBC Dist code at the beginning of the application\package name as well as application\package version), a folder structure will be created as the destination
                 # for the application\package move. The applications\packages will then be moved to their appropriate folder.
 #
-# Original Construction Date: v1.0 - 07-30-2025
+# Original Construction Date: v1.0 - 07-17-2025
 # Modified by: John Muhar for RBC- john.muhar@rbc.com
 # Revision Date: v1.1 - MM-DD-YYYY - Modifications
 #==============================================================================================================================================================================
@@ -60,7 +60,7 @@ Function Write-Log {
 
 
     #Obtain UTC offset
-    $DateTime = New-Object -ComObject WbemScripting.SWbemDateTime 
+    $DateTime = New-Object -ComObject WbemScripting.SWbemDateTime
     $DateTime.SetVarDate($(Get-Date))
     $UtcValue = $DateTime.Value
     $UtcOffset = $UtcValue.Substring(21, $UtcValue.Length - 21)
@@ -110,7 +110,7 @@ Function Display-Message{
 	    # Pop up a message
 	    Add-Type -AssemblyName PresentationCore, PresentationFramework
 	    $ButtonType = [System.Windows.MessageBoxButton]::Ok
-	    $MessageIcon = [System.Windows.MessageBoxImage]::$MessageIconType #Error, Question, Warning, Information 
+	    $MessageIcon = [System.Windows.MessageBoxImage]::$MessageIconType #Error, Question, Warning, Information
 	    [System.Windows.MessageBox]::Show($Message, $BoxTitle, $ButtonType, $messageicon)
 }
 #==============================================================================================================================================================================
@@ -130,7 +130,7 @@ Function Open-LogFile {
 #==============================================================================================================================================================================
 #==============================================================================================================================================================================
 $Button1_Click = { #the Start button. Main script goes here
-	$Button1.Enabled = $false #disable the start button once it is clicked
+    $Button1.Enabled = $false #disable the start button once it is clicked
     $Message = "Starting item cleanup..."
 	Write-Log $logFile $Message $ComponentName 1
 	Update-RunningGUI
@@ -150,6 +150,8 @@ $Button1_Click = { #the Start button. Main script goes here
 			Write-Log $logFile $Message $ComponentName 3
 			Display-Message $Message "Error"
 			$Form1.Close()
+            Open-LogFile
+            Return
 		}
 	}
 	else {
@@ -157,6 +159,8 @@ $Button1_Click = { #the Start button. Main script goes here
 		Write-Log $logFile $Message $ComponentName 3
 		Display-Message $Message "Error"
 		$Form1.Close()
+        Open-LogFile
+        Return
 	}
     #Load the MECM module
     $initParams = @{}
@@ -175,6 +179,7 @@ $Button1_Click = { #the Start button. Main script goes here
         Display-Message $Message "Error"
         $form1.Close()
         Open-LogFile
+        Return
     }
     # Connect to the site's drive
     If ((Get-PSDrive -Name $SiteCode -PSProvider CMSite -ErrorAction SilentlyContinue) -eq $null) {
@@ -193,6 +198,7 @@ $Button1_Click = { #the Start button. Main script goes here
             Display-Message $Message "Error"
             $form1.Close()
             Open-LogFile
+            Return
         }
     }
     else {
@@ -219,7 +225,8 @@ $Button1_Click = { #the Start button. Main script goes here
         Write-Log $logFile $Message $ComponentName 3
         Display-Message $Message "Error"
         $form1.Close()
-        Open-LogFile   
+        Open-LogFile
+        Return
     }
     $Message = "Loading item list to process..."
     Write-Log $logFile $Message $ComponentName 1
@@ -239,7 +246,6 @@ $Button1_Click = { #the Start button. Main script goes here
         Write-Log $logFile $Message $ComponentName 2
         Display-Message $Message "Warning"
         $form1.Close()
-        Open-LogFile
     }
 
     Foreach ($item in $itemlist){
@@ -290,7 +296,7 @@ $Button1_Click = { #the Start button. Main script goes here
                 [pscustomobject]@{Folder = "$itemverfolder"; FolderPath="$parentPath\$MasterItemFolder\$ParentDistCode\$distcode"}
             )
 
-            ForEach ($FolderVar in $FolderVarList) { 
+            ForEach ($FolderVar in $FolderVarList) {
                 $folder = $FolderVar.Folder
                 $folderpath = $FolderVar.FolderPath
                 If (!(Get-CMFolder -FolderPath $folderpath\$folder)) {
@@ -369,7 +375,7 @@ $Button1_Click = { #the Start button. Main script goes here
         $form1.Close()
         Display-Message $Message "Error"
         Open-LogFile
-    }    
+    }
     $Button1.Enabled = $true
 }
 #==============================================================================================================================================================================
@@ -383,14 +389,14 @@ $Button2_Click = { #The Close button
 	$Form1.Close()
 }
 $Form1_Load = {
-
+    $RadioButton1.Checked = $true #make sure the Appliication cleanup radio buttonb is selected by default.
 }
 
 $ApplicationCleanup = {
 	$Global:nodelocation = "SMS_ApplicationLatest"
     $Global:NameFormat = "LocalizedDisplayName"
     $Global:parentPath = 'Application'
-    $Global:MasterItemFolder = "01-All Applications" 
+    $Global:MasterItemFolder = "01-All Applications"
 }
 $PackageCleanup = {
 	$Global:nodelocation = "SMS_Package"
